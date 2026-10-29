@@ -1,0 +1,171 @@
+// Murree Update - Travel & Road Advisory Portal Prisma Schema
+// Database model representation for PostgreSQL / SQLite / MySQL
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+  OPERATOR
+}
+
+enum RoadStatus {
+  CLEAR
+  MODERATE_TRAFFIC
+  HEAVY_TRAFFIC
+  SNOW_CHAINS_REQUIRED
+  TEMPORARILY_BLOCKED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  phone     String?
+  role      Role      @default(USER)
+  bookings  Booking[]
+  reviews   Review[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model RoadUpdate {
+  id          String     @id @default(uuid())
+  roadName    String     // e.g. "Murree Expressway (M-75)", "Old Murree Road", "Galiyat Road"
+  section     String     // e.g. "Barakahu to Lower Topa", "Sunny Bank to Mall Road"
+  status      RoadStatus @default(CLEAR)
+  advisory    String     // e.g. "Road clear, light fog at Upper Topa"
+  snowLevelCm Float      @default(0.0)
+  updatedBy   String
+  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime   @default(now())
+}
+
+model Hotel {
+  id          String    @id @default(uuid())
+  name        String
+  tagline     String
+  location    String    // e.g. "Mall Road", "Bhurban", "Kashmir Point", "Changla Gali"
+  address     String
+  rating      Float     @default(4.5)
+  reviewsCount Int      @default(0)
+  pricePerNight Int     // In PKR
+  image       String
+  images      String[]
+  amenities   String[]  // e.g. ["Central Heating", "Mountain View", "Generator Backup", "Free WiFi"]
+  description String
+  phone       String
+  rooms       Room[]
+  reviews     Review[]
+  bookings    Booking[]
+  isFeatured  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  hotelId     String
+  hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  type        String   // "Deluxe Mountain View", "Executive Suite", "Family Suite"
+  capacity    Int      @default(2)
+  price       Int
+  available   Int      @default(5)
+  features    String[]
+}
+
+model CarRental {
+  id            String    @id @default(uuid())
+  title         String    // e.g. "Toyota Prado TX 4x4", "Toyota Corolla Altis", "Toyota Hiace Grand Cabin"
+  category      String    // "4x4 SUV", "Sedan", "Van / Group", "Economy"
+  dailyRate     Int       // PKR per day
+  seating       Int
+  isWithDriver  Boolean   @default(true)
+  fuelIncluded  Boolean   @default(false)
+  image         String
+  features      String[]
+  bookings      Booking[]
+}
+
+model TourPackage {
+  id          String   @id @default(uuid())
+  title       String   // e.g. "Full Day Patriata & Kashmir Point Tour"
+  duration    String   // "1 Day", "2 Days 1 Night"
+  price       Int      // PKR
+  highlights  String[]
+  pickupPoint String
+}
+
+model TouristSpot {
+  id          String   @id @default(uuid())
+  name        String   // "Mall Road", "Patriata (New Murree)", "Kashmir Point", "Pindi Point"
+  altitude    String   // "2,291 m (7,516 ft)"
+  distance    String   // "In Town Center", "15 km from Mall Road"
+  bestTime    String   // "Year Round", "Snow Season Dec-Feb"
+  entryFee    String   // "Free", "PKR 800 (Chairlift)"
+  image       String
+  description String
+  activities  String[]
+  tips        String
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  bookingNumber String        @unique // e.g. "MUR-2026-8941"
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  customerName  String
+  customerPhone String
+  customerEmail String
+  hotelId       String?
+  hotel         Hotel?        @relation(fields: [hotelId], references: [id])
+  roomType      String?
+  carId         String?
+  car           CarRental?    @relation(fields: [carId], references: [id])
+  checkInDate   DateTime
+  checkOutDate  DateTime
+  guests        Int           @default(2)
+  totalAmount   Int           // PKR
+  status        BookingStatus @default(CONFIRMED)
+  paymentMethod String        // "Pay on Arrival", "JazzCash", "EasyPaisa", "Bank Transfer"
+  notes         String?
+  createdAt     DateTime      @default(now())
+}
+
+model NewsAlert {
+  id          String   @id @default(uuid())
+  title       String
+  category    String   // "Weather Advisory", "Traffic Alert", "Tourism Event", "Snow Warning"
+  severity    String   // "High", "Moderate", "Info"
+  summary     String
+  content     String
+  source      String   // "Murree Traffic Police", "PDMA Punjab", "Met Office Islamabad"
+  date        DateTime @default(now())
+  isPinned    Boolean  @default(false)
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  hotelId   String
+  hotel     Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  author    String
+  rating    Int
+  comment   String
+  date      DateTime @default(now())
+}
